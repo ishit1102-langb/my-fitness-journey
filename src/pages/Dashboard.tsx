@@ -115,14 +115,25 @@ export default function Dashboard() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg gradient-primary">
-              <Activity className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg gradient-primary">
+                <Activity className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-display font-bold text-xl text-foreground">FitTrack</span>
             </div>
-            <span className="font-display font-bold text-xl text-foreground">FitTrack</span>
+            <nav className="hidden sm:flex items-center gap-4">
+              <span className="text-sm text-primary font-medium">Dashboard</span>
+              <button 
+                onClick={() => navigate("/sports")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sports Guide
+              </button>
+            </nav>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="text-sm text-muted-foreground hidden md:block">
               Hey, {user.name}! 👋
             </span>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
