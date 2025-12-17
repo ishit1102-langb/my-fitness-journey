@@ -30,6 +30,12 @@ export default function SportsGuide() {
                 Dashboard
               </Link>
               <Link 
+                to="/activity" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Activity
+              </Link>
+              <Link 
                 to="/sports" 
                 className="text-sm text-primary font-medium"
               >
