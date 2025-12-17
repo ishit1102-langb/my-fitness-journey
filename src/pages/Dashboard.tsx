@@ -217,6 +217,12 @@ export default function Dashboard() {
             <nav className="hidden sm:flex items-center gap-4">
               <span className="text-sm text-primary font-medium">Dashboard</span>
               <button 
+                onClick={() => navigate("/activity")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Activity
+              </button>
+              <button 
                 onClick={() => navigate("/sports")}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
