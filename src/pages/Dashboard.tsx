@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, LogOut, Footprints, Flame, Clock } from "lucide-react";
-import { startOfWeek, format, addDays, isToday, isSameDay } from "date-fns";
+import { startOfWeek, format, addDays, isToday, isSameDay, subDays, startOfDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
 import { GoalProgress } from "@/components/GoalProgress";
@@ -100,6 +100,59 @@ export default function Dashboard() {
 
   // Calculate weekly chart data from actual workouts
   const weeklyChartData = useMemo(() => getWeeklyChartData(workouts), [workouts]);
+
+  // Calculate today's stats
+  const today = startOfDay(new Date());
+  const yesterday = subDays(today, 1);
+
+  const todayWorkouts = useMemo(() => 
+    workouts.filter(w => isSameDay(new Date(w.timestamp), today)), 
+    [workouts, today]
+  );
+  const yesterdayWorkouts = useMemo(() => 
+    workouts.filter(w => isSameDay(new Date(w.timestamp), yesterday)), 
+    [workouts, yesterday]
+  );
+
+  const todayCalories = todayWorkouts.reduce((sum, w) => sum + w.calories, 0);
+  const yesterdayCalories = yesterdayWorkouts.reduce((sum, w) => sum + w.calories, 0);
+  const todayMinutes = todayWorkouts.reduce((sum, w) => sum + w.duration, 0);
+  const yesterdayMinutes = yesterdayWorkouts.reduce((sum, w) => sum + w.duration, 0);
+
+  // Calculate percentage trends (avoid division by zero)
+  const calculateTrend = (current: number, previous: number): number | undefined => {
+    if (previous === 0 && current === 0) return undefined;
+    if (previous === 0) return 100; // 100% increase from nothing
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  // For steps, we need yesterday's steps from localStorage
+  const [yesterdaySteps, setYesterdaySteps] = useState(0);
+  
+  useEffect(() => {
+    const savedYesterdaySteps = localStorage.getItem("fittrack_yesterday_steps");
+    if (savedYesterdaySteps) setYesterdaySteps(parseInt(savedYesterdaySteps));
+    
+    // At end of day, save today's steps as yesterday's (check on load)
+    const lastStepDate = localStorage.getItem("fittrack_step_date");
+    const todayStr = today.toISOString().split('T')[0];
+    
+    if (lastStepDate && lastStepDate !== todayStr) {
+      // It's a new day, move today's steps to yesterday
+      const oldTodaySteps = localStorage.getItem("fittrack_steps");
+      if (oldTodaySteps) {
+        localStorage.setItem("fittrack_yesterday_steps", oldTodaySteps);
+        setYesterdaySteps(parseInt(oldTodaySteps));
+      }
+      localStorage.setItem("fittrack_steps", "0");
+      setSteps(0);
+    }
+    localStorage.setItem("fittrack_step_date", todayStr);
+  }, [today]);
+
+  const stepsTrend = calculateTrend(steps, yesterdaySteps);
+  const caloriesTrend = calculateTrend(todayCalories, yesterdayCalories);
+  const minutesTrend = calculateTrend(todayMinutes, yesterdayMinutes);
 
   const totalCalories = workouts.reduce((sum, w) => sum + w.calories, 0);
   const totalMinutes = workouts.reduce((sum, w) => sum + w.duration, 0);
@@ -200,21 +253,21 @@ export default function Dashboard() {
             title="Steps"
             value={steps.toLocaleString()}
             icon={<Footprints className="w-5 h-5" />}
-            trend={12}
+            trend={stepsTrend}
           />
           <StatCard
             title="Calories"
-            value={totalCalories}
+            value={todayCalories}
             unit="kcal"
             icon={<Flame className="w-5 h-5" />}
-            trend={8}
+            trend={caloriesTrend}
           />
           <StatCard
             title="Workout Time"
-            value={totalMinutes}
+            value={todayMinutes}
             unit="min"
             icon={<Clock className="w-5 h-5" />}
-            trend={-5}
+            trend={minutesTrend}
           />
           <StreakCounter streak={streak} />
         </div>
