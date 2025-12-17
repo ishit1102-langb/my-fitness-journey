@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, LogOut, Footprints, Flame, Clock } from "lucide-react";
+import { startOfWeek, format, addDays, isToday, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
 import { GoalProgress } from "@/components/GoalProgress";
@@ -20,16 +21,36 @@ interface Workout {
   timestamp: Date;
 }
 
-// Mock weekly data
-const mockWeeklyData = [
-  { day: "Mon", calories: 320, minutes: 45 },
-  { day: "Tue", calories: 450, minutes: 60 },
-  { day: "Wed", calories: 280, minutes: 35 },
-  { day: "Thu", calories: 520, minutes: 75 },
-  { day: "Fri", calories: 380, minutes: 50 },
-  { day: "Sat", calories: 600, minutes: 90 },
-  { day: "Sun", calories: 0, minutes: 0 },
-];
+// Function to get current week's days (Monday to Sunday)
+const getCurrentWeekDays = () => {
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    return {
+      date,
+      day: format(date, "EEE"),
+      isToday: isToday(date),
+    };
+  });
+};
+
+// Function to calculate weekly chart data from workouts
+const getWeeklyChartData = (workouts: Workout[]) => {
+  const weekDays = getCurrentWeekDays();
+  
+  return weekDays.map(({ date, day, isToday: isTodayFlag }) => {
+    const dayWorkouts = workouts.filter(w => 
+      isSameDay(new Date(w.timestamp), date)
+    );
+    
+    return {
+      day,
+      calories: dayWorkouts.reduce((sum, w) => sum + w.calories, 0),
+      minutes: dayWorkouts.reduce((sum, w) => sum + w.duration, 0),
+      isToday: isTodayFlag,
+    };
+  });
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -48,19 +69,36 @@ export default function Dashboard() {
     }
     setUser(JSON.parse(userData));
 
-    // Load saved data
-    const savedSteps = localStorage.getItem("fittrack_steps");
-    const savedWorkouts = localStorage.getItem("fittrack_workouts");
-    const savedGoals = localStorage.getItem("fittrack_goals");
+    // Check for new week and reset if needed
+    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
+    const lastWeekStart = localStorage.getItem("fittrack_week_start");
+    
+    if (lastWeekStart !== currentWeekStart) {
+      // New week! Reset workout data and steps
+      localStorage.setItem("fittrack_week_start", currentWeekStart);
+      localStorage.removeItem("fittrack_workouts");
+      localStorage.removeItem("fittrack_steps");
+      setWorkouts([]);
+      setSteps(0);
+    } else {
+      // Load saved data for current week
+      const savedSteps = localStorage.getItem("fittrack_steps");
+      const savedWorkouts = localStorage.getItem("fittrack_workouts");
+      if (savedSteps) setSteps(parseInt(savedSteps));
+      if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
+    }
 
-    if (savedSteps) setSteps(parseInt(savedSteps));
-    if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
+    // Load goals (persist across weeks)
+    const savedGoals = localStorage.getItem("fittrack_goals");
     if (savedGoals) {
       const goals = JSON.parse(savedGoals);
       setStepGoal(goals.stepGoal);
       setCalorieGoal(goals.calorieGoal);
     }
   }, [navigate]);
+
+  // Calculate weekly chart data from actual workouts
+  const weeklyChartData = useMemo(() => getWeeklyChartData(workouts), [workouts]);
 
   const totalCalories = workouts.reduce((sum, w) => sum + w.calories, 0);
   const totalMinutes = workouts.reduce((sum, w) => sum + w.duration, 0);
@@ -190,7 +228,7 @@ export default function Dashboard() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <WeeklyChart data={mockWeeklyData} />
+            <WeeklyChart data={weeklyChartData} />
             <RecentActivity workouts={workouts} />
           </div>
 

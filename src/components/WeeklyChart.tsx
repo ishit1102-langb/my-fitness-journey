@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { TrendingUp } from "lucide-react";
 
 interface WeeklyChartProps {
-  data: { day: string; calories: number; minutes: number }[];
+  data: { day: string; calories: number; minutes: number; isToday?: boolean }[];
 }
 
 export function WeeklyChart({ data }: WeeklyChartProps) {
@@ -23,7 +23,22 @@ export function WeeklyChart({ data }: WeeklyChartProps) {
                 dataKey="day" 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: 'hsl(215 20% 55%)', fontSize: 12 }}
+                tick={({ x, y, payload }) => {
+                  const entry = data.find(d => d.day === payload.value);
+                  const isTodayDay = entry?.isToday;
+                  return (
+                    <text 
+                      x={x} 
+                      y={y + 10} 
+                      textAnchor="middle" 
+                      fill={isTodayDay ? 'hsl(168 80% 50%)' : 'hsl(215 20% 55%)'} 
+                      fontSize={12}
+                      fontWeight={isTodayDay ? 600 : 400}
+                    >
+                      {payload.value}
+                    </text>
+                  );
+                }}
               />
               <YAxis 
                 axisLine={false}
@@ -38,13 +53,22 @@ export function WeeklyChart({ data }: WeeklyChartProps) {
                   color: 'hsl(210 40% 98%)'
                 }}
                 labelStyle={{ color: 'hsl(210 40% 98%)' }}
+                formatter={(value: number, name: string) => [`${value} kcal`, 'Calories']}
               />
               <Bar 
                 dataKey="calories" 
-                fill="hsl(168 80% 50%)" 
                 radius={[4, 4, 0, 0]}
                 name="Calories"
-              />
+              >
+                {data.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.isToday ? 'hsl(168 80% 60%)' : 'hsl(168 80% 50%)'} 
+                    stroke={entry.isToday ? 'hsl(168 80% 70%)' : 'none'}
+                    strokeWidth={entry.isToday ? 2 : 0}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
