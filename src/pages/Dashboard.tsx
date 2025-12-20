@@ -1,8 +1,8 @@
 // Dashboard with real-time weekly tracking
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, LogOut, Footprints, Flame, Clock } from "lucide-react";
-import { startOfWeek, format, addDays, isToday, isSameDay, subDays, startOfDay } from "date-fns";
+import { startOfWeek, format, addDays, isToday, isSameDay, subDays, startOfDay, differenceInDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
 import { GoalProgress } from "@/components/GoalProgress";
@@ -12,6 +12,7 @@ import { WeeklyChart } from "@/components/WeeklyChart";
 import { RecentActivity } from "@/components/RecentActivity";
 import { GoalSetting } from "@/components/GoalSetting";
 import { StepInput } from "@/components/StepInput";
+import { GoalCelebration } from "@/components/GoalCelebration";
 import { toast } from "@/hooks/use-toast";
 
 interface Workout {
@@ -60,7 +61,11 @@ export default function Dashboard() {
   const [stepGoal, setStepGoal] = useState(10000);
   const [calorieGoal, setCalorieGoal] = useState(500);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [streak, setStreak] = useState(5);
+  const [streak, setStreak] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationType, setCelebrationType] = useState("");
+  const stepGoalReached = useRef(false);
+  const calorieGoalReached = useRef(false);
 
   useEffect(() => {
     const userData = localStorage.getItem("fittrack_user");
@@ -96,7 +101,57 @@ export default function Dashboard() {
       setStepGoal(goals.stepGoal);
       setCalorieGoal(goals.calorieGoal);
     }
+
+    // Load and calculate streak
+    calculateStreak();
   }, [navigate]);
+
+  // Calculate streak based on consecutive days with activity
+  const calculateStreak = useCallback(() => {
+    const savedWorkouts = localStorage.getItem("fittrack_workouts");
+    const allWorkouts: Workout[] = savedWorkouts ? JSON.parse(savedWorkouts) : [];
+    const activityDates = localStorage.getItem("fittrack_activity_dates");
+    const dates: string[] = activityDates ? JSON.parse(activityDates) : [];
+    
+    // Add today if there are workouts today
+    const todayStr = startOfDay(new Date()).toISOString().split('T')[0];
+    const todayHasActivity = allWorkouts.some(w => 
+      isSameDay(new Date(w.timestamp), new Date())
+    );
+    
+    if (todayHasActivity && !dates.includes(todayStr)) {
+      dates.push(todayStr);
+      localStorage.setItem("fittrack_activity_dates", JSON.stringify(dates));
+    }
+
+    // Sort dates and count consecutive days backwards from today
+    const sortedDates = [...new Set(dates)].sort().reverse();
+    let currentStreak = 0;
+    let checkDate = startOfDay(new Date());
+
+    for (const dateStr of sortedDates) {
+      const activityDate = startOfDay(new Date(dateStr));
+      const daysDiff = differenceInDays(checkDate, activityDate);
+      
+      if (daysDiff === 0) {
+        currentStreak++;
+        checkDate = subDays(checkDate, 1);
+      } else if (daysDiff === 1) {
+        // Skip to yesterday if today has no activity yet
+        if (currentStreak === 0) {
+          checkDate = activityDate;
+          currentStreak++;
+          checkDate = subDays(checkDate, 1);
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    setStreak(currentStreak);
+  }, []);
 
   // Calculate weekly chart data from actual workouts
   const weeklyChartData = useMemo(() => getWeeklyChartData(workouts), [workouts]);
@@ -162,6 +217,35 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
+  // Check for goal celebrations
+  useEffect(() => {
+    const totalCals = workouts.reduce((sum, w) => sum + w.calories, 0);
+    
+    if (steps >= stepGoal && !stepGoalReached.current) {
+      stepGoalReached.current = true;
+      setCelebrationType("Steps");
+      setShowCelebration(true);
+    }
+    
+    if (totalCals >= calorieGoal && !calorieGoalReached.current) {
+      calorieGoalReached.current = true;
+      setCelebrationType("Calories");
+      setShowCelebration(true);
+    }
+  }, [steps, stepGoal, workouts, calorieGoal]);
+
+  // Reset goal tracking on day change
+  useEffect(() => {
+    const todayStr = startOfDay(new Date()).toISOString().split('T')[0];
+    const lastGoalDate = localStorage.getItem("fittrack_goal_date");
+    
+    if (lastGoalDate !== todayStr) {
+      stepGoalReached.current = false;
+      calorieGoalReached.current = false;
+      localStorage.setItem("fittrack_goal_date", todayStr);
+    }
+  }, []);
+
   const handleAddWorkout = (workout: { type: string; duration: number; calories: number }) => {
     const newWorkout: Workout = {
       id: Date.now().toString(),
@@ -171,6 +255,17 @@ export default function Dashboard() {
     const updated = [...workouts, newWorkout];
     setWorkouts(updated);
     localStorage.setItem("fittrack_workouts", JSON.stringify(updated));
+    
+    // Update activity dates for streak
+    const todayStr = startOfDay(new Date()).toISOString().split('T')[0];
+    const activityDates = localStorage.getItem("fittrack_activity_dates");
+    const dates: string[] = activityDates ? JSON.parse(activityDates) : [];
+    if (!dates.includes(todayStr)) {
+      dates.push(todayStr);
+      localStorage.setItem("fittrack_activity_dates", JSON.stringify(dates));
+    }
+    calculateStreak();
+    
     toast({
       title: "Workout logged!",
       description: `${workout.type} - ${workout.duration} min, ${workout.calories} kcal`,
@@ -201,6 +296,11 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <GoalCelebration 
+        show={showCelebration} 
+        goalType={celebrationType}
+        onClose={() => setShowCelebration(false)}
+      />
       {/* Background glow */}
       <div className="fixed inset-0 gradient-glow pointer-events-none" />
 
