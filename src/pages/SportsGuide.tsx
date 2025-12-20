@@ -41,6 +41,12 @@ export default function SportsGuide() {
               >
                 Sports Guide
               </Link>
+              <Link 
+                to="/products" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Products
+              </Link>
             </nav>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>

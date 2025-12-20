@@ -1,9 +1,10 @@
 // Dashboard with real-time weekly tracking
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Activity, LogOut, Footprints, Flame, Clock } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Activity, LogOut, Footprints, Flame, Clock, User } from "lucide-react";
 import { startOfWeek, format, addDays, isToday, isSameDay, subDays, startOfDay, differenceInDays } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatCard } from "@/components/StatCard";
 import { GoalProgress } from "@/components/GoalProgress";
 import { StreakCounter } from "@/components/StreakCounter";
@@ -329,24 +330,38 @@ export default function Dashboard() {
             </div>
             <nav className="hidden sm:flex items-center gap-4">
               <span className="text-sm text-primary font-medium">Dashboard</span>
-              <button 
-                onClick={() => navigate("/activity")}
+              <Link 
+                to="/activity"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Activity
-              </button>
-              <button 
-                onClick={() => navigate("/sports")}
+              </Link>
+              <Link 
+                to="/sports"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sports Guide
-              </button>
+              </Link>
+              <Link 
+                to="/products"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Products
+              </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground hidden md:block">
               Hey, {user.name}! 👋
             </span>
+            <Link to="/profile">
+              <Avatar className="w-8 h-8 border border-border hover:border-primary transition-colors cursor-pointer">
+                <AvatarImage src={localStorage.getItem("fittrack_profile_image") || undefined} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {user.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
             </Button>
