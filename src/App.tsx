@@ -9,6 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import Activity from "./pages/Activity";
 import SportsGuide from "./pages/SportsGuide";
 import SportDetail from "./pages/SportDetail";
+import Profile from "./pages/Profile";
+import Products from "./pages/Products";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/activity" element={<Activity />} />
           <Route path="/sports" element={<SportsGuide />} />
           <Route path="/sports/:sportId" element={<SportDetail />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/products" element={<Products />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

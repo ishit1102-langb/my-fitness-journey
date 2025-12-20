@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { 
   Activity as ActivityIcon, 
   LogOut, 
@@ -204,25 +204,36 @@ export default function Activity() {
               <span className="font-display font-bold text-xl text-foreground">FitTrack</span>
             </div>
             <nav className="hidden sm:flex items-center gap-4">
-              <button 
-                onClick={() => navigate("/dashboard")}
+              <Link 
+                to="/dashboard"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Dashboard
-              </button>
+              </Link>
               <span className="text-sm text-primary font-medium">Activity</span>
-              <button 
-                onClick={() => navigate("/sports")}
+              <Link 
+                to="/sports"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sports Guide
-              </button>
+              </Link>
+              <Link 
+                to="/products"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Products
+              </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground hidden md:block">
               Hey, {user.name}! 👋
             </span>
+            <Link to="/profile">
+              <div className="w-8 h-8 rounded-full border border-border hover:border-primary transition-colors cursor-pointer bg-primary/10 flex items-center justify-center">
+                <span className="text-xs text-primary font-medium">{user.name.charAt(0).toUpperCase()}</span>
+              </div>
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
             </Button>
