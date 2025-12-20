@@ -14,6 +14,8 @@ import { GoalSetting } from "@/components/GoalSetting";
 import { StepInput } from "@/components/StepInput";
 import { GoalCelebration } from "@/components/GoalCelebration";
 import { toast } from "@/hooks/use-toast";
+import { sounds } from "@/lib/sounds";
+import { haptics } from "@/lib/haptics";
 
 interface Workout {
   id: string;
@@ -225,12 +227,16 @@ export default function Dashboard() {
       stepGoalReached.current = true;
       setCelebrationType("Steps");
       setShowCelebration(true);
+      sounds.celebration();
+      haptics.celebration();
     }
     
     if (totalCals >= calorieGoal && !calorieGoalReached.current) {
       calorieGoalReached.current = true;
       setCelebrationType("Calories");
       setShowCelebration(true);
+      sounds.celebration();
+      haptics.celebration();
     }
   }, [steps, stepGoal, workouts, calorieGoal]);
 
@@ -266,6 +272,9 @@ export default function Dashboard() {
     }
     calculateStreak();
     
+    sounds.success();
+    haptics.success();
+    
     toast({
       title: "Workout logged!",
       description: `${workout.type} - ${workout.duration} min, ${workout.calories} kcal`,
@@ -276,6 +285,10 @@ export default function Dashboard() {
     const updated = steps + newSteps;
     setSteps(updated);
     localStorage.setItem("fittrack_steps", updated.toString());
+    
+    sounds.steps();
+    haptics.medium();
+    
     toast({
       title: "Steps added!",
       description: `+${newSteps.toLocaleString()} steps`,
