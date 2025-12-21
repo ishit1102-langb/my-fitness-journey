@@ -11,6 +11,8 @@ import SportsGuide from "./pages/SportsGuide";
 import SportDetail from "./pages/SportDetail";
 import Profile from "./pages/Profile";
 import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import Cart from "./pages/Cart";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/sports/:sportId" element={<SportDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/products/:productId" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

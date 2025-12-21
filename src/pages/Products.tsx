@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Activity, ArrowLeft, ShoppingCart, Star, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,94 +6,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sportsData, iconMap } from "@/data/sportsData";
+import { allProducts, Product } from "@/lib/productsData";
+import { cartStore } from "@/lib/cartStore";
 import { toast } from "@/hooks/use-toast";
 import { sounds } from "@/lib/sounds";
 import { haptics } from "@/lib/haptics";
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  reviews: number;
-  sport: string;
-  category: string;
-  image: string;
-  inStock: boolean;
-}
-
-const generateProducts = (): Product[] => {
-  const categories = ["Equipment", "Apparel", "Accessories", "Footwear", "Training Gear"];
-  const products: Product[] = [];
-  
-  sportsData.forEach((sport) => {
-    const sportProducts = [
-      {
-        id: `${sport.id}-1`,
-        name: `${sport.name} Pro Gear Set`,
-        description: `Professional-grade equipment for ${sport.name.toLowerCase()} enthusiasts`,
-        price: 149.99,
-        originalPrice: 199.99,
-        rating: 4.8,
-        reviews: 234,
-        sport: sport.id,
-        category: "Equipment",
-        image: `https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=300&fit=crop`,
-        inStock: true,
-      },
-      {
-        id: `${sport.id}-2`,
-        name: `${sport.name} Training Shoes`,
-        description: `Lightweight, responsive footwear designed for ${sport.name.toLowerCase()}`,
-        price: 129.99,
-        rating: 4.6,
-        reviews: 189,
-        sport: sport.id,
-        category: "Footwear",
-        image: `https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop`,
-        inStock: true,
-      },
-      {
-        id: `${sport.id}-3`,
-        name: `${sport.name} Performance Jersey`,
-        description: `Moisture-wicking fabric for peak performance`,
-        price: 59.99,
-        originalPrice: 79.99,
-        rating: 4.7,
-        reviews: 312,
-        sport: sport.id,
-        category: "Apparel",
-        image: `https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=300&fit=crop`,
-        inStock: true,
-      },
-      {
-        id: `${sport.id}-4`,
-        name: `${sport.name} Training Kit`,
-        description: `Complete training accessories bundle`,
-        price: 89.99,
-        rating: 4.5,
-        reviews: 156,
-        sport: sport.id,
-        category: "Training Gear",
-        image: `https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=300&fit=crop`,
-        inStock: Math.random() > 0.2,
-      },
-    ];
-    products.push(...sportProducts);
-  });
-  
-  return products;
-};
-
-const allProducts = generateProducts();
 
 export default function Products() {
   const navigate = useNavigate();
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [cart, setCart] = useState<string[]>([]);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    setCartCount(cartStore.getItemCount());
+  }, []);
 
   const filteredProducts = allProducts.filter((product) => {
     const sportMatch = selectedSport === "all" || product.sport === selectedSport;
@@ -103,8 +30,17 @@ export default function Products() {
 
   const categories = ["all", ...new Set(allProducts.map(p => p.category))];
 
-  const handleAddToCart = (product: Product) => {
-    setCart([...cart, product.id]);
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    cartStore.addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: product.image,
+      sport: product.sport,
+    });
+    setCartCount(cartStore.getItemCount());
     sounds.success();
     haptics.medium();
     toast({
@@ -141,12 +77,12 @@ export default function Products() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-2 relative">
+            <Button variant="outline" size="sm" className="gap-2 relative" onClick={() => navigate("/cart")}>
               <ShoppingCart className="w-4 h-4" />
               Cart
-              {cart.length > 0 && (
+              {cartCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs">
-                  {cart.length}
+                  {cartCount}
                 </Badge>
               )}
             </Button>
@@ -232,7 +168,11 @@ export default function Products() {
         {/* Products Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in" style={{ animationDelay: "0.2s" }}>
           {filteredProducts.map((product) => (
-            <Card key={product.id} className="group overflow-hidden hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
+            <Card 
+              key={product.id} 
+              className="group overflow-hidden hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 cursor-pointer"
+              onClick={() => navigate(`/products/${product.id}`)}
+            >
               <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
                 <img
                   src={product.image}
@@ -263,7 +203,7 @@ export default function Products() {
                     <Star className="w-4 h-4 fill-warning text-warning" />
                     <span className="text-sm font-medium">{product.rating}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">({product.reviews} reviews)</span>
+                  <span className="text-sm text-muted-foreground">({product.reviews.length} reviews)</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -275,7 +215,7 @@ export default function Products() {
                   <Button 
                     size="sm" 
                     disabled={!product.inStock}
-                    onClick={() => handleAddToCart(product)}
+                    onClick={(e) => handleAddToCart(e, product)}
                     className="gap-1"
                   >
                     <ShoppingCart className="w-4 h-4" />
