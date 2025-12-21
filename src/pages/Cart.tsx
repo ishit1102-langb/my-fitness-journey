@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cartStore, CartItem } from "@/lib/cartStore";
+import { orderStore } from "@/lib/orderStore";
 import { sportsData } from "@/data/sportsData";
 import { toast } from "@/hooks/use-toast";
 import { sounds } from "@/lib/sounds";
@@ -20,6 +21,7 @@ export default function Cart() {
   const [promoApplied, setPromoApplied] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     setCart(cartStore.getCart());
@@ -60,10 +62,30 @@ export default function Cart() {
     }
   };
 
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = promoApplied ? subtotal * 0.1 : 0;
+  const shipping = subtotal > 100 ? 0 : 9.99;
+  const total = subtotal - discount + shipping;
+
   const handleCheckout = () => {
     setIsCheckingOut(true);
     // Simulate checkout process
     setTimeout(() => {
+      // Save order to history
+      const order = orderStore.addOrder({
+        items: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+        })),
+        subtotal,
+        discount,
+        shipping,
+        total,
+      });
+      setLastOrderId(order.id);
       cartStore.clearCart();
       setCart([]);
       setIsCheckingOut(false);
@@ -72,11 +94,6 @@ export default function Cart() {
       haptics.celebration();
     }, 2000);
   };
-
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = promoApplied ? subtotal * 0.1 : 0;
-  const shipping = subtotal > 100 ? 0 : 9.99;
-  const total = subtotal - discount + shipping;
 
   if (orderComplete) {
     return (
@@ -90,15 +107,21 @@ export default function Cart() {
             <h1 className="text-3xl font-display font-bold text-foreground mb-4">
               Order Confirmed!
             </h1>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-muted-foreground mb-2">
               Thank you for your purchase. Your order has been placed successfully and you'll receive a confirmation email shortly.
             </p>
+            {lastOrderId && (
+              <p className="text-sm text-primary font-medium mb-8">Order ID: {lastOrderId}</p>
+            )}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button onClick={() => navigate("/products")}>
                 Continue Shopping
               </Button>
-              <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                Go to Dashboard
+              <Button variant="outline" onClick={() => navigate("/profile")}>
+                View Order History
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                Dashboard
               </Button>
             </div>
           </div>

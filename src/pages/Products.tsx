@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, ShoppingCart, Star, Filter } from "lucide-react";
+import { Activity, ArrowLeft, ShoppingCart, Star, Filter, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { sportsData, iconMap } from "@/data/sportsData";
 import { allProducts, Product } from "@/lib/productsData";
 import { cartStore } from "@/lib/cartStore";
+import { wishlistStore } from "@/lib/wishlistStore";
+import { ProductSearch } from "@/components/ProductSearch";
 import { toast } from "@/hooks/use-toast";
 import { sounds } from "@/lib/sounds";
 import { haptics } from "@/lib/haptics";
@@ -17,9 +19,11 @@ export default function Products() {
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cartCount, setCartCount] = useState(0);
+  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
 
   useEffect(() => {
     setCartCount(cartStore.getItemCount());
+    setWishlistIds(wishlistStore.getWishlist().map((w) => w.id));
   }, []);
 
   const filteredProducts = allProducts.filter((product) => {
@@ -46,6 +50,27 @@ export default function Products() {
     toast({
       title: "Added to cart!",
       description: `${product.name} has been added to your cart.`,
+    });
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    const { wishlist, added } = wishlistStore.toggleItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: product.image,
+      sport: product.sport,
+    });
+    setWishlistIds(wishlist.map((w) => w.id));
+    sounds.tap();
+    haptics.light();
+    toast({
+      title: added ? "Added to wishlist!" : "Removed from wishlist",
+      description: added
+        ? `${product.name} has been saved to your wishlist.`
+        : `${product.name} has been removed from your wishlist.`,
     });
   };
 
@@ -96,13 +121,16 @@ export default function Products() {
 
       {/* Main Content */}
       <main className="container py-8 relative">
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground">
-            Sports Products
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
-            Find the best equipment, apparel, and accessories for your favorite sports.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground">
+              Sports Products
+            </h1>
+            <p className="text-muted-foreground mt-2 max-w-2xl">
+              Find the best equipment, apparel, and accessories for your favorite sports.
+            </p>
+          </div>
+          <ProductSearch />
         </div>
 
         {/* Filters */}
@@ -179,6 +207,20 @@ export default function Products() {
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full"
+                  onClick={(e) => handleToggleWishlist(e, product)}
+                >
+                  <Heart
+                    className={`w-4 h-4 ${
+                      wishlistIds.includes(product.id)
+                        ? "fill-destructive text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                </Button>
                 {product.originalPrice && (
                   <Badge className="absolute top-3 left-3 bg-destructive">
                     Sale
