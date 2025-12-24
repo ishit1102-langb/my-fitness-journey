@@ -67,32 +67,57 @@ export default function Cart() {
   const shipping = subtotal > 100 ? 0 : 9.99;
   const total = subtotal - discount + shipping;
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     setIsCheckingOut(true);
-    // Simulate checkout process
-    setTimeout(() => {
-      // Save order to history
-      const order = orderStore.addOrder({
-        items: cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-        })),
-        subtotal,
-        discount,
-        shipping,
-        total,
-      });
-      setLastOrderId(order.id);
-      cartStore.clearCart();
-      setCart([]);
-      setIsCheckingOut(false);
-      setOrderComplete(true);
-      sounds.celebration();
-      haptics.celebration();
-    }, 2000);
+    
+    // Save order to history
+    const order = orderStore.addOrder({
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+      })),
+      subtotal,
+      discount,
+      shipping,
+      total,
+    });
+    
+    // Send email notification
+    const userData = localStorage.getItem("fittrack_user");
+    if (userData) {
+      const user = JSON.parse(userData);
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-order-notification`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: user.email,
+            orderId: order.id,
+            status: "processing",
+            items: order.items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+            total: order.total,
+            estimatedDelivery: order.estimatedDelivery,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to send email notification:", error);
+      }
+    }
+    
+    setLastOrderId(order.id);
+    cartStore.clearCart();
+    setCart([]);
+    setIsCheckingOut(false);
+    setOrderComplete(true);
+    sounds.celebration();
+    haptics.celebration();
   };
 
   if (orderComplete) {

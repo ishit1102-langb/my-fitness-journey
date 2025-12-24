@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, ShoppingCart, Star, Filter, Heart } from "lucide-react";
+import { Activity, ArrowLeft, ShoppingCart, Star, Filter, Heart, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { sportsData, iconMap } from "@/data/sportsData";
 import { allProducts, Product } from "@/lib/productsData";
 import { cartStore } from "@/lib/cartStore";
 import { wishlistStore } from "@/lib/wishlistStore";
+import { comparisonStore } from "@/lib/comparisonStore";
 import { ProductSearch } from "@/components/ProductSearch";
 import { toast } from "@/hooks/use-toast";
 import { sounds } from "@/lib/sounds";
@@ -20,10 +21,12 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cartCount, setCartCount] = useState(0);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   useEffect(() => {
     setCartCount(cartStore.getItemCount());
     setWishlistIds(wishlistStore.getWishlist().map((w) => w.id));
+    setCompareIds(comparisonStore.getItems());
   }, []);
 
   const filteredProducts = allProducts.filter((product) => {
@@ -74,6 +77,37 @@ export default function Products() {
     });
   };
 
+  const handleToggleComparison = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    if (compareIds.includes(product.id)) {
+      const updated = comparisonStore.removeItem(product.id);
+      setCompareIds(updated);
+      sounds.tap();
+      haptics.light();
+      toast({
+        title: "Removed from comparison",
+        description: `${product.name} has been removed from comparison.`,
+      });
+    } else {
+      const result = comparisonStore.addItem(product.id);
+      if (result.added) {
+        setCompareIds(result.items);
+        sounds.success();
+        haptics.medium();
+        toast({
+          title: "Added to comparison",
+          description: `${product.name} has been added to comparison.`,
+        });
+      } else {
+        toast({
+          title: "Cannot add",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 gradient-glow pointer-events-none" />
@@ -102,6 +136,20 @@ export default function Products() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2 relative" 
+              onClick={() => navigate("/compare")}
+            >
+              <Scale className="w-4 h-4" />
+              Compare
+              {compareIds.length > 0 && (
+                <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs">
+                  {compareIds.length}
+                </Badge>
+              )}
+            </Button>
             <Button variant="outline" size="sm" className="gap-2 relative" onClick={() => navigate("/cart")}>
               <ShoppingCart className="w-4 h-4" />
               Cart

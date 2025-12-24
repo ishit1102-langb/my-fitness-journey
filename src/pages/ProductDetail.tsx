@@ -1,18 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, ShoppingCart, Star, ChevronLeft, ChevronRight, Minus, Plus, Check, ThumbsUp } from "lucide-react";
+import { Activity, ArrowLeft, ShoppingCart, Star, ChevronLeft, ChevronRight, Minus, Plus, Check, ThumbsUp, Scale, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getProductById, getRelatedProducts, Product } from "@/lib/productsData";
+import { getProductById, getRelatedProducts, Product, Review } from "@/lib/productsData";
 import { cartStore } from "@/lib/cartStore";
+import { comparisonStore } from "@/lib/comparisonStore";
+import { reviewStore, UserReview } from "@/lib/reviewStore";
 import { sportsData } from "@/data/sportsData";
 import { toast } from "@/hooks/use-toast";
 import { sounds } from "@/lib/sounds";
 import { haptics } from "@/lib/haptics";
 import { format } from "date-fns";
+import { WriteReview } from "@/components/WriteReview";
 
 export default function ProductDetail() {
   const { productId } = useParams();
@@ -22,6 +25,8 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [cartCount, setCartCount] = useState(0);
+  const [userReviews, setUserReviews] = useState<UserReview[]>([]);
+  const [isInComparison, setIsInComparison] = useState(false);
 
   useEffect(() => {
     if (productId) {
@@ -31,10 +36,50 @@ export default function ProductDetail() {
         setRelatedProducts(getRelatedProducts(foundProduct));
         setSelectedImage(0);
         setQuantity(1);
+        setUserReviews(reviewStore.getProductReviews(productId));
+        setIsInComparison(comparisonStore.isInComparison(productId));
       }
     }
     setCartCount(cartStore.getItemCount());
   }, [productId]);
+
+  const refreshReviews = () => {
+    if (productId) {
+      setUserReviews(reviewStore.getProductReviews(productId));
+    }
+  };
+
+  const handleToggleComparison = () => {
+    if (!product) return;
+    
+    if (isInComparison) {
+      comparisonStore.removeItem(product.id);
+      setIsInComparison(false);
+      sounds.tap();
+      haptics.light();
+      toast({
+        title: "Removed from comparison",
+        description: "Product removed from comparison list.",
+      });
+    } else {
+      const result = comparisonStore.addItem(product.id);
+      if (result.added) {
+        setIsInComparison(true);
+        sounds.success();
+        haptics.medium();
+        toast({
+          title: "Added to comparison",
+          description: "Product added to comparison list.",
+        });
+      } else {
+        toast({
+          title: "Cannot add",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -71,7 +116,11 @@ export default function ProductDetail() {
   }
 
   const sportName = sportsData.find((s) => s.id === product.sport)?.name || product.sport;
-  const averageRating = product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length;
+  const allReviews: (Review | UserReview)[] = [...userReviews, ...product.reviews];
+  const averageRating = allReviews.length > 0 
+    ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length 
+    : 0;
+  const compareCount = comparisonStore.getCount();
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,6 +146,20 @@ export default function ProductDetail() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2 relative" 
+              onClick={() => navigate("/compare")}
+            >
+              <Scale className="w-4 h-4" />
+              Compare
+              {compareCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs">
+                  {compareCount}
+                </Badge>
+              )}
+            </Button>
             <Button variant="outline" size="sm" className="gap-2 relative" onClick={() => navigate("/cart")}>
               <ShoppingCart className="w-4 h-4" />
               Cart
@@ -186,11 +249,11 @@ export default function ProductDetail() {
                   ))}
                   <span className="ml-2 font-medium">{averageRating.toFixed(1)}</span>
                 </div>
-                <span className="text-muted-foreground">({product.reviews.length} reviews)</span>
-              </div>
+              <span className="text-muted-foreground">({allReviews.length} reviews)</span>
             </div>
+          </div>
 
-            <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline gap-3">
               <span className="text-4xl font-bold text-foreground">${product.price}</span>
               {product.originalPrice && (
                 <span className="text-xl text-muted-foreground line-through">${product.originalPrice}</span>
@@ -239,6 +302,15 @@ export default function ProductDetail() {
                 <ShoppingCart className="w-5 h-5" />
                 {product.inStock ? "Add to Cart" : "Out of Stock"}
               </Button>
+              <Button
+                variant={isInComparison ? "secondary" : "outline"}
+                size="lg"
+                className="gap-2"
+                onClick={handleToggleComparison}
+              >
+                <Scale className="w-5 h-5" />
+                {isInComparison ? "In Comparison" : "Compare"}
+              </Button>
             </div>
 
             {product.inStock && (
@@ -279,8 +351,66 @@ export default function ProductDetail() {
         {/* Reviews Section */}
         <section className="mb-12 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <h2 className="text-2xl font-display font-bold text-foreground mb-6">
-            Customer Reviews ({product.reviews.length})
+            Customer Reviews ({allReviews.length})
           </h2>
+          
+          {/* Write Review */}
+          <div className="mb-8">
+            <WriteReview 
+              productId={product.id} 
+              productName={product.name} 
+              onReviewSubmitted={refreshReviews}
+            />
+          </div>
+
+          {/* User Reviews */}
+          {userReviews.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Recent Reviews</h3>
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                {userReviews.map((review) => (
+                  <Card key={review.id} className="border-primary/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {review.userName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-foreground">{review.userName}</p>
+                              {review.verified && (
+                                <Badge variant="secondary" className="text-xs gap-1">
+                                  <BadgeCheck className="w-3 h-3" />
+                                  Verified
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(review.date), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${star <= review.rating ? "fill-warning text-warning" : "text-muted-foreground"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground">{review.comment}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Product Reviews */}
           <div className="grid md:grid-cols-2 gap-4">
             {product.reviews.map((review) => (
               <Card key={review.id}>
