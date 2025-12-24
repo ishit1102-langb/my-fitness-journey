@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
+import Compare from "./pages/Compare";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/products" element={<Products />} />
           <Route path="/products/:productId" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
